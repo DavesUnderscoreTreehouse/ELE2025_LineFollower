@@ -1,0 +1,139 @@
+#include "CytronMotorDriver.h"
+
+// Configure the motor driver.
+CytronMD motor1(PWM_PWM, 3, 9);   // PWM 1A = Pin 3, PWM 1B = Pin 9.
+CytronMD motor2(PWM_PWM, 10, 11); // PWM 2A = Pin 10, PWM 2B = Pin 11.
+
+#define PIEZO   8
+
+// IR sensor pins
+#define IR_LEFT   A0    // Left sensor
+#define IR_RIGHT  A1    // Right sensor
+#define IR_LEFT2  A2    // Extra left sensor
+#define IR_RIGHT2 A3    // Extra right sensor
+
+// Sound notes
+#define NOTE_G5  784
+#define NOTE_C6  1047
+
+int startMelody[] = {NOTE_G5, NOTE_C6};
+int startNoteDurations[] = {12, 8};
+
+int stopMelody[] = {NOTE_C6, NOTE_G5};
+int stopNoteDurations[] = {12, 8};
+
+#define playStartMelody() playMelody(startMelody, startNoteDurations, 2)
+#define playStopMelody() playMelody(stopMelody, stopNoteDurations, 2)
+
+void setup()
+{
+  pinMode(PIEZO, OUTPUT);
+
+  pinMode(IR_LEFT, INPUT);
+  pinMode(IR_RIGHT, INPUT);
+  pinMode(IR_LEFT2, INPUT);
+  pinMode(IR_RIGHT2, INPUT);
+ 
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  Serial.println("Send 'S' to Start");  
+
+  while (Serial.available() == 0);  // Wait for 'S' input  
+
+  char command = Serial.read();  
+  if (command == 'S') {  
+    playStartMelody();  
+
+    while (true) {
+      int left2 = digitalRead(IR_LEFT2);
+      int left1 = digitalRead(IR_LEFT);
+      int right1 = digitalRead(IR_RIGHT);
+      int right2 = digitalRead(IR_RIGHT2);
+
+      if (left1 == LOW && right1 == LOW && left2 == LOW && right2 == LOW) {
+        robotForward();  // Move forward
+        Serial.println("Forward");
+      }
+      else if (left2 == HIGH) {
+        robotHardLeft();  // Strong left turn
+        Serial.println("Hard Left");
+      }
+      else if (right2 == HIGH) {
+        robotHardRight();  // Strong right turn
+        Serial.println("Hard Right");
+      }
+      else if (left1 == HIGH) {
+        robotTurnLeft();  // Slight left turn
+        Serial.println("Left");
+      }
+      else if (right1 == HIGH) {
+        robotTurnRight();  // Slight right turn
+        Serial.println("Right");
+      }
+      else if (left1 == HIGH && right1 == HIGH) {
+        Serial.println("Stop");
+        robotStop();  
+        playStopMelody();
+        break;
+      }
+    }
+  }
+}
+
+// Function to play a melody
+void playMelody(int *melody, int *noteDurations, int notesLength)
+{
+  pinMode(PIEZO, OUTPUT);
+  for (int thisNote = 0; thisNote < notesLength; thisNote++) {
+    int noteDuration = 1000 / noteDurations[thisNote];
+    tone(PIEZO, melody[thisNote], noteDuration);
+    delay(noteDuration * 1.30);
+    noTone(PIEZO);
+  }
+}
+
+// Motor control functions
+void robotStop()
+{
+  motor1.setSpeed(0);
+  motor2.setSpeed(0);
+}
+
+void robotForward()
+{
+  motor1.setSpeed(60);
+  motor2.setSpeed(60);
+}
+
+void robotReverse()
+{
+  motor1.setSpeed(-60);
+  motor2.setSpeed(-60);
+}
+
+void robotTurnLeft()
+{
+  motor1.setSpeed(0);
+  motor2.setSpeed(90);
+}
+
+void robotTurnRight()
+{
+  motor1.setSpeed(90);
+  motor2.setSpeed(0);
+}
+
+void robotHardLeft()
+{
+  motor1.setSpeed(-150);
+  motor2.setSpeed(120);
+}
+
+void robotHardRight()
+{
+  motor1.setSpeed(100);
+  motor2.setSpeed(-150);
+}
