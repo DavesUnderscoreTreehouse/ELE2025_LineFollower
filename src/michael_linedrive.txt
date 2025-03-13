@@ -8,9 +8,8 @@ CytronMD motor2(PWM_PWM, 10, 11); // PWM 2A = Pin 10, PWM 2B = Pin 11.
 
 // IR sensor pins
 #define IR_LEFT   A0    // Left sensor
-#define IR_RIGHT  A1    // Right sensor
-#define IR_LEFT2  A2    // Extra left sensor
-#define IR_RIGHT2 A3    // Extra right sensor
+#define IR_CENTER A1    // Center sensor
+#define IR_RIGHT  A3    // Right sensor
 
 // Sound notes
 #define NOTE_G5  784
@@ -22,17 +21,12 @@ int startNoteDurations[] = {12, 8};
 int stopMelody[] = {NOTE_C6, NOTE_G5};
 int stopNoteDurations[] = {12, 8};
 
-#define playStartMelody() playMelody(startMelody, startNoteDurations, 2)
-#define playStopMelody() playMelody(stopMelody, stopNoteDurations, 2)
-
 void setup()
 {
   pinMode(PIEZO, OUTPUT);
-
   pinMode(IR_LEFT, INPUT);
   pinMode(IR_RIGHT, INPUT);
-  pinMode(IR_LEFT2, INPUT);
-  pinMode(IR_RIGHT2, INPUT);
+  pinMode(IR_CENTER, INPUT);
  
   Serial.begin(9600);
 }
@@ -45,39 +39,26 @@ void loop()
 
   char command = Serial.read();  
   if (command == 'S') {  
-    playStartMelody();  
 
     while (true) {
-      int left2 = digitalRead(IR_LEFT2);
-      int left1 = digitalRead(IR_LEFT);
-      int right1 = digitalRead(IR_RIGHT);
-      int right2 = digitalRead(IR_RIGHT2);
+      int left = digitalRead(IR_LEFT);
+      int right = digitalRead(IR_RIGHT);
+      int center = digitalRead(IR_CENTER);
 
-      if (left1 == LOW && right1 == LOW && left2 == LOW && right2 == LOW) {
-        robotForward();  // Move forward
+      // Move forward if center sensor detects black
+      if (center == HIGH && left == LOW && right == LOW) {
+        robotForward();  
         Serial.println("Forward");
       }
-      else if (left2 == HIGH) {
-        robotHardLeft();  // Strong left turn
-        Serial.println("Hard Left");
-      }
-      else if (right2 == HIGH) {
-        robotHardRight();  // Strong right turn
-        Serial.println("Hard Right");
-      }
-      else if (left1 == HIGH) {
-        robotTurnLeft();  // Slight left turn
+      // Turn left if left sensor detects black
+      else if (left == HIGH && center == LOW) {
+        robotTurnLeft();
         Serial.println("Left");
       }
-      else if (right1 == HIGH) {
-        robotTurnRight();  // Slight right turn
+      // Turn right if right sensor detects black
+      else if (right == HIGH && center == LOW) {
+        robotTurnRight();
         Serial.println("Right");
-      }
-      else if (left1 == HIGH && right1 == HIGH) {
-        Serial.println("Stop");
-        robotStop();  
-        playStopMelody();
-        break;
       }
     }
   }
@@ -96,16 +77,10 @@ void playMelody(int *melody, int *noteDurations, int notesLength)
 }
 
 // Motor control functions
-void robotStop()
-{
-  motor1.setSpeed(0);
-  motor2.setSpeed(0);
-}
-
 void robotForward()
 {
-  motor1.setSpeed(60);
-  motor2.setSpeed(60);
+  motor1.setSpeed(80);
+  motor2.setSpeed(80);
 }
 
 void robotReverse()
@@ -116,24 +91,12 @@ void robotReverse()
 
 void robotTurnLeft()
 {
-  motor1.setSpeed(0);
-  motor2.setSpeed(90);
+  motor1.setSpeed(-20);  // Left motor slower
+  motor2.setSpeed(100);  // Right motor faster
 }
 
 void robotTurnRight()
 {
-  motor1.setSpeed(90);
-  motor2.setSpeed(0);
-}
-
-void robotHardLeft()
-{
-  motor1.setSpeed(-150);
-  motor2.setSpeed(120);
-}
-
-void robotHardRight()
-{
-  motor1.setSpeed(100);
-  motor2.setSpeed(-150);
+  motor1.setSpeed(100);  // Left motor faster
+  motor2.setSpeed(-20);  // Right motor slower
 }

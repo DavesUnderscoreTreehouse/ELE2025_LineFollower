@@ -12,21 +12,21 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "C:/Users/davem/OneDrive - Queen's University Belfast/Documents/QUB/ELE2025_EmbeddedSystems2/RobotProject/ELE2025_LineFollower/.pio/build/uno/firmware.elf",
-            "projectEnvName": "uno",
+            "executable": "C:/Users/davem/OneDrive - Queen's University Belfast/Documents/QUB/ELE2025_EmbeddedSystems2/RobotProject/ELE2025_LineFollower/.pio/build/megaatmega2560/firmware.elf",
+            "projectEnvName": "megaatmega2560",
             "toolchainBinDir": "C:/Users/davem/.platformio/packages/toolchain-atmelavr/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "preLaunchTask": {
                 "type": "PlatformIO",
-                "task": "Pre-Debug"
+                "task": "Pre-Debug (megaatmega2560)"
             }
         },
         {
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "C:/Users/davem/OneDrive - Queen's University Belfast/Documents/QUB/ELE2025_EmbeddedSystems2/RobotProject/ELE2025_LineFollower/.pio/build/uno/firmware.elf",
-            "projectEnvName": "uno",
+            "executable": "C:/Users/davem/OneDrive - Queen's University Belfast/Documents/QUB/ELE2025_EmbeddedSystems2/RobotProject/ELE2025_LineFollower/.pio/build/megaatmega2560/firmware.elf",
+            "projectEnvName": "megaatmega2560",
             "toolchainBinDir": "C:/Users/davem/.platformio/packages/toolchain-atmelavr/bin",
             "internalConsoleOptions": "openOnSessionStart"
         },
@@ -34,8 +34,8 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (without uploading)",
-            "executable": "C:/Users/davem/OneDrive - Queen's University Belfast/Documents/QUB/ELE2025_EmbeddedSystems2/RobotProject/ELE2025_LineFollower/.pio/build/uno/firmware.elf",
-            "projectEnvName": "uno",
+            "executable": "C:/Users/davem/OneDrive - Queen's University Belfast/Documents/QUB/ELE2025_EmbeddedSystems2/RobotProject/ELE2025_LineFollower/.pio/build/megaatmega2560/firmware.elf",
+            "projectEnvName": "megaatmega2560",
             "toolchainBinDir": "C:/Users/davem/.platformio/packages/toolchain-atmelavr/bin",
             "internalConsoleOptions": "openOnSessionStart",
             "loadMode": "manual"
