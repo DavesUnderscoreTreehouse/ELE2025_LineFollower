@@ -1,0 +1,102 @@
+#include "CytronMotorDriver.h"
+
+// Configure the motor driver.
+CytronMD motor1(PWM_PWM, 3, 9);   // PWM 1A = Pin 3, PWM 1B = Pin 9.
+CytronMD motor2(PWM_PWM, 10, 11); // PWM 2A = Pin 10, PWM 2B = Pin 11.
+
+#define PIEZO   8
+
+// IR sensor pins
+#define IR_LEFT   A0    // Left sensor
+#define IR_CENTER A1    // Center sensor
+#define IR_RIGHT  A3    // Right sensor
+
+// Sound notes
+#define NOTE_G5  784
+#define NOTE_C6  1047
+
+int startMelody[] = {NOTE_G5, NOTE_C6};
+int startNoteDurations[] = {12, 8};
+
+int stopMelody[] = {NOTE_C6, NOTE_G5};
+int stopNoteDurations[] = {12, 8};
+
+void setup()
+{
+  pinMode(PIEZO, OUTPUT);
+  pinMode(IR_LEFT, INPUT);
+  pinMode(IR_RIGHT, INPUT);
+  pinMode(IR_CENTER, INPUT);
+ 
+  Serial.begin(9600);
+}
+
+void loop()
+{
+  Serial.println("Send 'S' to Start");  
+
+  while (Serial.available() == 0);  // Wait for 'S' input  
+
+  char command = Serial.read();  
+  if (command == 'S') {  
+
+    while (true) {
+      int left = digitalRead(IR_LEFT);
+      int right = digitalRead(IR_RIGHT);
+      int center = digitalRead(IR_CENTER);
+
+      // Move forward if center sensor detects black
+      if (center == HIGH && left == LOW && right == LOW) {
+        robotForward();  
+        Serial.println("Forward");
+      }
+      // Turn left if left sensor detects black
+      else if (left == HIGH && center == LOW) {
+        robotTurnLeft();
+        Serial.println("Left");
+      }
+      // Turn right if right sensor detects black
+      else if (right == HIGH && center == LOW) {
+        robotTurnRight();
+        Serial.println("Right");
+      }
+    }
+  }
+}
+
+// Function to play a melody
+void playMelody(int *melody, int *noteDurations, int notesLength)
+{
+  pinMode(PIEZO, OUTPUT);
+  for (int thisNote = 0; thisNote < notesLength; thisNote++) {
+    int noteDuration = 1000 / noteDurations[thisNote];
+    tone(PIEZO, melody[thisNote], noteDuration);
+    delay(noteDuration * 1.30);
+    noTone(PIEZO);
+  }
+}
+
+// Motor control functions
+void robotForward()
+{
+  motor1.setSpeed(80);
+  motor2.setSpeed(80);
+}
+
+void robotReverse()
+{
+  motor1.setSpeed(-60);
+  motor2.setSpeed(-60);
+}
+
+void robotTurnLeft()
+{
+  motor1.setSpeed(-20);  // Left motor slower
+  motor2.setSpeed(100);  // Right motor faster
+}
+
+void robotTurnRight()
+{
+  motor1.setSpeed(100);  // Left motor faster
+  motor2.setSpeed(-20);  // Right motor slower
+}

@@ -1,0 +1,154 @@
+#include <Dabble.h>
+
+#define CUSTOM_SETTINGS
+#define INCLUDE_GAMEPAD_MODULE
+//#define Bluetooth Serial3
+//Serial3 (pins BT_TX BT_RX)
+
+// Bluetooth module pins
+#define BT_TX 14  // Bluetooth TX
+#define BT_RX 15  // Bluetooth RX
+
+// Motor driver (Maker Drive) pins
+const int M1A = 5;  // Motor 1 PWM
+const int M1B = 4;  // Motor 1 Direction
+const int M2A = 3;  // Motor 2 PWM
+const int M2B = 2;  // Motor 2 Direction
+
+const int motorSpeed = 150; // Adjust speed (0-255)
+
+// Encoder pins
+const int leftEncoderA = 48;
+const int leftEncoderB = 49;
+const int rightEncoderA = 50;
+const int rightEncoderB = 51;
+
+volatile long leftCount = 0;
+volatile long rightCount = 0;
+
+void leftEncoderISR() {
+    if (digitalRead(leftEncoderA) == digitalRead(leftEncoderB)) {
+        leftCount++;
+    } else {
+        leftCount--;
+    }
+}
+
+void rightEncoderISR() {
+    if (digitalRead(rightEncoderA) == digitalRead(rightEncoderB)) {
+        rightCount++;
+    } else {
+        rightCount--;
+    }
+}
+
+void setup() {
+
+
+    // Set motor driver pins as OUTPUT
+    pinMode(M1A, OUTPUT);
+    pinMode(M1B, OUTPUT);
+    pinMode(M2A, OUTPUT);
+    pinMode(M2B, OUTPUT);
+
+    // Set encoder pins as INPUT
+    pinMode(leftEncoderA, INPUT);
+    pinMode(leftEncoderB, INPUT);
+    pinMode(rightEncoderA, INPUT);
+    pinMode(rightEncoderB, INPUT);
+
+    // Attach interrupts for encoders
+    attachInterrupt(digitalPinToInterrupt(leftEncoderA), leftEncoderISR, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(rightEncoderA), rightEncoderISR, CHANGE);
+
+    // Initialize Serial and Bluetooth
+    Serial.begin(9600);
+
+    Dabble.begin(38400);  
+    Dabble.begin("Bluetooth_Name");
+    Serial.println("Use Dabble App or Serial Monitor to control motors.");
+}
+
+void loop() {
+    Dabble.processInput();  // Check for Bluetooth input from Dabble app
+
+    char command = '\0';
+
+    // Read from Serial Monitor
+    if (Serial.available()) {
+        command = Serial.read();
+    }
+
+    // Read from Dabble Gamepad
+    if (GamePad.isUpPressed()) command = 'F';
+    if (GamePad.isDownPressed()) command = 'B';
+    if (GamePad.isLeftPressed()) command = 'L';
+    if (GamePad.isRightPressed()) command = 'R';
+    if (GamePad.isSquarePressed()) command = 'S';
+
+    if (command) {
+        Serial.print("Received Command: ");
+        Serial.println(command);
+
+        if (command == 'F') {
+            moveForward();
+        }
+        else if (command == 'B') {
+            moveBackward();
+        }
+        else if (command == 'L') {
+            turnLeft();
+        }
+        else if (command == 'R') {
+            turnRight();
+        }
+        else if (command == 'S') {
+            stopMotors();
+        }
+    }
+
+    // Print encoder counts
+    Serial.print("Left Encoder: ");
+    Serial.print(leftCount);
+    Serial.print(" | Right Encoder: ");
+    Serial.println(rightCount);
+}
+
+// Motor control functions for Maker Drive
+void moveForward() {
+    digitalWrite(M1A, HIGH);
+    analogWrite(M1B, motorSpeed);
+    digitalWrite(M2A, HIGH);
+    analogWrite(M2B, motorSpeed);
+    Serial.println("Moving Forward");
+}
+
+void moveBackward() {
+    digitalWrite(M1A, LOW);
+    analogWrite(M1B, motorSpeed);
+    digitalWrite(M2A, LOW);
+    analogWrite(M2B, motorSpeed);
+    Serial.println("Moving Backward");
+}
+
+void turnLeft() {
+    digitalWrite(M1A, LOW);
+    analogWrite(M1B, motorSpeed);
+    digitalWrite(M2A, HIGH);
+    analogWrite(M2B, motorSpeed);
+    Serial.println("Turning Left");
+}
+
+void turnRight() {
+    digitalWrite(M1A, HIGH);
+    analogWrite(M1B, motorSpeed);
+    digitalWrite(M2A, LOW);
+    analogWrite(M2B, motorSpeed);
+    Serial.println("Turning Right");
+}
+
+void stopMotors() {
+    analogWrite(M1B, 0);
+    analogWrite(M2B, 0);
+    Serial.println("Stopped");
+}
