@@ -5,9 +5,9 @@ Servo servoL;
 Servo servoR;
 
 // global variables
-int servoBottom = 10;
-int servoTop = 50;
-int servoPos = 20;
+//int servoBottom = 10;
+//int servoTop = 50;
+//int servoPos = 20;
 int intData = 0;
 //  Servo position angles
 const int scoopDown = 0;
