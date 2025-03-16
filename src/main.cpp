@@ -25,8 +25,8 @@
 #define IR_CENTER        A1     // Center sensor
 #define IR_RIGHT         A3     // Right sensor
 // Ultrasonic pins
-#define ULTRA_ECHO       52     // Ultrasonic echo
-#define ULTRA_TRIG       53     // Ultrasonic trigger
+// #define ULTRA_ECHO       52     // Ultrasonic echo
+// #define ULTRA_TRIG       53     // Ultrasonic trigger
 
 //===== Global Variables =====
 // Servo setup
@@ -61,8 +61,8 @@ void setup() {
   pinMode(IR_LEFT,    INPUT);
   pinMode(IR_RIGHT,   INPUT);
   pinMode(IR_CENTER,  INPUT);
-  pinMode(ULTRA_ECHO, INPUT);
-  pinMode(ULTRA_TRIG, INPUT);
+  // pinMode(ULTRA_ECHO, INPUT);
+  // pinMode(ULTRA_TRIG, INPUT);
 
   // Serial setup
   Serial.begin(250000);       // Setting serial baud rate of mega
@@ -76,139 +76,133 @@ void setup() {
 }
 
 void loop() {
-  while (Serial.available() == 0);    // Wait for serial input
-  char inputChar;                     // Received serial character
-  inputChar = Serial.read();          // reads in the incoming string
-  char command;                       // Validated alphabetic input
+  char inputChar;                     // Read in character from serial
+  char command = ' ';                 // Validated alphabetic input
   int  value;                         // Validated numeric input 
-
-  // Check if it's a valid alphanumeric character
-  if (isAlpha(inputChar)) {           // If input valid pass to command
-    Serial.print("Character input: ");
-    Serial.println(inputChar);
-    command = toUpperCase(inputChar);              // Assign input to command
-  } else if (isDigit(inputChar)) {    // If input valid digit pass to value and assign command
-    Serial.print("Numeric input: ");
-    Serial.println(inputChar);
-    value = (inputChar - '0') * 10;   // Convert input to int
-    command = 'V';                    // Assign 'V' command
-  }
-  else {                              // Invalid input
-    Serial.println("Invalid input");
-  }
   
   // Read Dabble gamepad inputs
   Dabble.processInput();              //this function is used to refresh data obtained from smartphone.Hence calling this function is mandatory in order to get data properly from your mobile.
   if (GamePad.isUpPressed()) {
-    Serial.print("UP");
+    Serial.println("Key pressed: UP");
     command = 'U';
   }
 
   if (GamePad.isDownPressed()) {
-    Serial.print("DOWN");
+    Serial.println("Key pressed: DOWN");
     command = 'D';
   }
 
   if (GamePad.isLeftPressed()) {
-    Serial.print("Left");
+    Serial.println("Key pressed: Left");
     command = 'L';
   }
 
   if (GamePad.isRightPressed()) {
-    Serial.print("Right");
+    Serial.println("Key pressed: Right");
     command = 'R';
   }
 
   if (GamePad.isSquarePressed()) {
-    Serial.print("Square");
+    Serial.println("Key pressed: Square");
     command = 'Q';
   }
 
   if (GamePad.isCirclePressed()) {
-    Serial.print("Circle");
+    Serial.println("Key pressed: Circle");
     command = 'C';
   }
 
   if (GamePad.isCrossPressed()) {
-    Serial.print("Cross");
+    Serial.println("Key pressed: Cross");
     command = 'X';
   }
 
   if (GamePad.isTrianglePressed()) {
-    Serial.print("Triangle");
+    Serial.println("Key pressed: Triangle");
     command = 'T';
   }
 
   if (GamePad.isStartPressed()) {
-    Serial.print("Start");
+    Serial.println("Key pressed: Start");
     command = 'A';
   }
 
   if (GamePad.isSelectPressed()) {
-    Serial.print("Select");
+    Serial.println("Key pressed: Select");
     command = 'B';
+  }
+
+  // Check if input is a valid alphanumeric character
+  if (Serial.available()) {
+    inputChar = Serial.read();          // Read in serial character
+    if (isAlpha(inputChar)) {           // If input valid pass to command
+      Serial.print("Character input: ");
+      Serial.println(inputChar);
+      command = toUpperCase(inputChar); // Assign input to command
+    } else if (isDigit(inputChar)) {    // If input valid digit pass to value and assign command
+      Serial.print("Numeric input: ");
+      Serial.println(inputChar);
+      value = (inputChar - '0') * 10;   // Convert input to int
+      command = 'V';                    // Assign 'V' command
+    } else {                            // Invalid input
+      Serial.print("Invalid input: ");
+      Serial.println(Serial.readString());
+    }
   }
   
   switch (command) {   // Apply inputs
     case 'A':
       RobotStop();
       break;
-    case 'U':          // Drive forward
+
+    case 'U':          // Up - Drive forward
       RobotForward();
       break;
 
-    case 'D':          // Drive backward
+    case 'D':          // Down - Drive backward
       RobotReverse();
       break;
 
-    case 'L':          // Turn left
+    case 'L':          // Left - Turn left
       RobotTurnLeft();
-      command = 'U';
       break;
 
-    case 'R':          // Turn right
+    case 'R':          // Right - Turn right
       RobotTurnRight();
-      command = 'U';
       break;
 
-    case 'Q':          // undefined
+    case 'Q':          // Square - undefined
       // commands here
       break;
 
-    case 'C':          // undefined
+    case 'C':          // Circle - undefined
       // commands here
       break;
 
-    case 'X':                           // Scoop down
+    case 'X':                           // Cross - Scoop down
       servoL.write(SCOOP_DOWN);
       servoR.write(InvertedServoPos(SCOOP_DOWN));
+      Serial.println("Scoop down");
       break;
 
-    case 'T':                           // Scoop up
+    case 'T':                           // Triangle - Scoop up
       servoL.write(SCOOP_UP);
       servoR.write(InvertedServoPos(SCOOP_UP));
+      Serial.println("Scoop up");
       break;
 
-    case 'B':                           // Line follow
-      while (Serial.available() > 0) {  // Clear serial buffer
-        Serial.read();
-      }
-      inputChar = ' ';
-      while (inputChar != 'B') {        // Until next input of S, line follow
-        LineFollow();
-        if (Serial.available()) {
-          inputChar = Serial.read();
-        }
-      }
+    case 'B':                           // Select - Line follow
+      LineFollow();
       break;
 
-    case 'V':                           // Serial scoop control
+    case 'V':                           // Serial value input - Serial scoop control
       servoL.write(value);
       servoR.write(InvertedServoPos(value));
       break;
     
     default:                            // Default: invalid command
-      Serial.println("Invalid command");
+      Serial.print("Invalid or empty command: ");
+      Serial.println(command);
       break;
   }
 }
@@ -226,24 +220,26 @@ int InvertedServoPos(int servoPos) {
 }
 
 void LineFollow() {
-  int left = digitalRead(IR_LEFT);
-  int right = digitalRead(IR_RIGHT);
-  int center = digitalRead(IR_CENTER);
+  while () {
+    int left = digitalRead(IR_LEFT);
+    int right = digitalRead(IR_RIGHT);
+    int center = digitalRead(IR_CENTER);
 
-  // Move forward if center sensor detects black
-  if (center == HIGH && left == LOW && right == LOW) {
-  RobotForward();  
-  Serial.println("Forward");
-  }
-  // Turn left if left sensor detects black
-  else if (left == HIGH && center == LOW) {
-  RobotTurnLeft();
-  Serial.println("Left");
-  }
-  // Turn right if right sensor detects black
-  else if (right == HIGH && center == LOW) {
-  RobotTurnRight();
-  Serial.println("Right");
+    // Move forward if center sensor detects black
+    if (center == HIGH && left == LOW && right == LOW) {
+      RobotForward();  
+      Serial.println("Forward");
+    }
+    // Turn left if left sensor detects black
+    else if (left == HIGH && center == LOW) {
+      RobotTurnLeft();
+      Serial.println("Left");
+    }
+    // Turn right if right sensor detects black
+    else if (right == HIGH && center == LOW) {
+      RobotTurnRight();
+      Serial.println("Right");
+    }
   }
 }
 // Motor control functions
@@ -254,6 +250,7 @@ void LineFollow() {
 void RobotForward() {
   motorL.setSpeed(80);
   motorR.setSpeed(80);
+  Serial.println("Robot forward");
 }
 
 /**
@@ -263,6 +260,7 @@ void RobotForward() {
 void RobotReverse() {
   motorL.setSpeed(-60);
   motorR.setSpeed(-60);
+  Serial.println("Robot reverse");
 }
 
 /**
@@ -272,6 +270,7 @@ void RobotReverse() {
 void RobotTurnLeft() {
   motorL.setSpeed(-20);  // Left motor slower
   motorR.setSpeed(100);  // Right motor faster
+  Serial.println("Robot left");
 }
 
 /**
@@ -281,6 +280,7 @@ void RobotTurnLeft() {
 void RobotTurnRight() {
   motorL.setSpeed(100);  // Left motor faster
   motorR.setSpeed(-20);  // Right motor slower
+  Serial.println("Robot right");
 }
 
 /**
@@ -292,4 +292,5 @@ void RobotStop() {
   motorR.setSpeed(0);         // Right motor stop
   servoL.write(SCOOP_DOWN);   // Left servo down
   servoR.write(SCOOP_DOWN);   // Right servo down
+  Serial.println("Robot stop");
 }
