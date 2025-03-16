@@ -16,8 +16,8 @@
 // Motor driver pins
 #define MOTOR_R_FORWARD  10     // M1A
 #define MOTOR_R_BACK     11     // M1B
-#define MOTOR_L_FORWARD  8      // M2A
-#define MOTRO_L_BACK     9      // M2B
+#define MOTOR_L_FORWARD  9      // M2A
+#define MOTRO_L_BACK     8      // M2B
 // Motor encoder pins
 //                          TODO
 // IR pins
@@ -25,17 +25,17 @@
 #define IR_CENTER        A1     // Center sensor
 #define IR_RIGHT         A3     // Right sensor
 // Ultrasonic pins
-// #define ULTRA_ECHO       52     // Ultrasonic echo
-// #define ULTRA_TRIG       53     // Ultrasonic trigger
+#define ULTRA_ECHO       52     // Ultrasonic echo
+#define ULTRA_TRIG       53     // Ultrasonic trigger
 
 //===== Global Variables =====
 // Servo setup
 Servo servoL;                   // Initialising servo objects
 Servo servoR;
-#define SERVO_MIN_PULSE  550    // Minimum pulse width in ms, default 544
-#define SERVO_MAX_PULSE  2000   // Minimum pulse width in ms, default 2400
+#define SERVO_MIN_PULSE  544    // Minimum pulse width in ms, default 544
+#define SERVO_MAX_PULSE  2400   // Minimum pulse width in ms, default 2400
 #define SCOOP_DOWN       0      // Scoop down preset angle
-#define SCOOP_UP         30     // Scoop raised preset angle
+#define SCOOP_UP         45     // Scoop raised preset angle
 
 // Motor setup
 CytronMD motorL(PWM_PWM, MOTOR_L_FORWARD, MOTRO_L_BACK);   // PWM 1A = Pin 10, PWM 1B = Pin 11
@@ -61,15 +61,15 @@ void setup() {
   pinMode(IR_LEFT,    INPUT);
   pinMode(IR_RIGHT,   INPUT);
   pinMode(IR_CENTER,  INPUT);
-  // pinMode(ULTRA_ECHO, INPUT);
-  // pinMode(ULTRA_TRIG, INPUT);
+  pinMode(ULTRA_ECHO, INPUT);
+  pinMode(ULTRA_TRIG, INPUT);
 
   // Serial setup
-  Serial.begin(250000);       // Setting serial baud rate of mega
-  Dabble.begin(38400);        // Setting Dabble baud rate to match rate of HC-05 
+  Serial.begin(250000);               // Setting serial baud rate of mega
+  Dabble.begin(38400);                // Setting Dabble baud rate to match rate of HC-05 
 
   // Servo setup
-  servoL.write(SCOOP_DOWN);                    // Preset servos to start with scoop down
+  servoL.write(SCOOP_DOWN);           // Preset servos to start with scoop down
   servoR.write(InvertedServoPos(SCOOP_DOWN));
   servoL.attach(LEFT_SERVO,  SERVO_MIN_PULSE, SERVO_MAX_PULSE);
   servoR.attach(RIGHT_SERVO, SERVO_MIN_PULSE, SERVO_MAX_PULSE);
@@ -81,56 +81,58 @@ void loop() {
   int  value;                         // Validated numeric input 
   
   // Read Dabble gamepad inputs
-  Dabble.processInput();              //this function is used to refresh data obtained from smartphone.Hence calling this function is mandatory in order to get data properly from your mobile.
+  Dabble.processInput();              // This function is used to refresh data obtained from smartphone.Hence calling this function is mandatory in order to get data properly from your mobile.
+  Serial.print("Key pressed: ");
   if (GamePad.isUpPressed()) {
-    Serial.println("Key pressed: UP");
+    Serial.print("UP");
     command = 'U';
   }
 
   if (GamePad.isDownPressed()) {
-    Serial.println("Key pressed: DOWN");
+    Serial.print("DOWN");
     command = 'D';
   }
 
   if (GamePad.isLeftPressed()) {
-    Serial.println("Key pressed: Left");
+    Serial.print("Left");
     command = 'L';
   }
 
   if (GamePad.isRightPressed()) {
-    Serial.println("Key pressed: Right");
+    Serial.print("Right");
     command = 'R';
   }
 
   if (GamePad.isSquarePressed()) {
-    Serial.println("Key pressed: Square");
+    Serial.print("Square");
     command = 'Q';
   }
 
   if (GamePad.isCirclePressed()) {
-    Serial.println("Key pressed: Circle");
+    Serial.print("Circle");
     command = 'C';
   }
 
   if (GamePad.isCrossPressed()) {
-    Serial.println("Key pressed: Cross");
+    Serial.print("Cross");
     command = 'X';
   }
 
   if (GamePad.isTrianglePressed()) {
-    Serial.println("Key pressed: Triangle");
+    Serial.print("Triangle");
     command = 'T';
   }
 
   if (GamePad.isStartPressed()) {
-    Serial.println("Key pressed: Start");
+    Serial.print("Start");
     command = 'A';
   }
 
   if (GamePad.isSelectPressed()) {
-    Serial.println("Key pressed: Select");
+    Serial.print("Select");
     command = 'B';
   }
+  Serial.println();
 
   // Check if input is a valid alphanumeric character
   if (Serial.available()) {
@@ -154,7 +156,7 @@ void loop() {
     case 'A':
       RobotStop();
       break;
-
+      
     case 'U':          // Up - Drive forward
       RobotForward();
       break;
@@ -220,25 +222,35 @@ int InvertedServoPos(int servoPos) {
 }
 
 void LineFollow() {
-  while () {
+  bool doLineFollow = true;
+  delay(500);
+  while (doLineFollow) {
     int left = digitalRead(IR_LEFT);
     int right = digitalRead(IR_RIGHT);
     int center = digitalRead(IR_CENTER);
 
     // Move forward if center sensor detects black
     if (center == HIGH && left == LOW && right == LOW) {
-      RobotForward();  
-      Serial.println("Forward");
+    RobotForward();  
+    Serial.println("Line follow: Forward");
     }
     // Turn left if left sensor detects black
     else if (left == HIGH && center == LOW) {
-      RobotTurnLeft();
-      Serial.println("Left");
+    RobotTurnLeft();
+    Serial.println("Line follow: Left");
     }
     // Turn right if right sensor detects black
     else if (right == HIGH && center == LOW) {
-      RobotTurnRight();
-      Serial.println("Right");
+    RobotTurnRight();
+    Serial.println("Line follow: Right");
+    }
+    // Check if button pressed to stop line following
+    Dabble.processInput();
+    if (GamePad.isSelectPressed()) {
+      RobotStop();
+      doLineFollow = false;
+      Serial.println("Line following stop");
+      delay(500);
     }
   }
 }
@@ -291,6 +303,6 @@ void RobotStop() {
   motorL.setSpeed(0);         // Left motor stop
   motorR.setSpeed(0);         // Right motor stop
   servoL.write(SCOOP_DOWN);   // Left servo down
-  servoR.write(SCOOP_DOWN);   // Right servo down
+  servoR.write(InvertedServoPos(SCOOP_DOWN));   // Right servo down
   Serial.println("Robot stop");
 }
