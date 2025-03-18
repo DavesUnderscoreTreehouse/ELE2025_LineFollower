@@ -1,54 +1,72 @@
 //===== Libraries =====
-#include <Arduino.h>            // Adds support for Arduino syntax when using PlatformIO environment in VS Code
+#include <Arduino.h>                  // Adds support for Arduino syntax when using PlatformIO environment in VS Code
 
-#include <Servo.h>              // Adds support for servo control
+#include <Servo.h>                    // Adds support for servo control
 
 #define CUSTOM_SETTINGS
 #define INCLUDE_GAMEPAD_MODULE
-#include <Dabble.h>             // Adds support for communication with Dabble app over bluetooth
+#include <Dabble.h>                   // Adds support for communication with Dabble app over bluetooth
 
-#include <CytronMotorDriver.h>  // Adds support for Cytron's Maker Drive H-Bridge motor driver
+#include <CytronMotorDriver.h>        // Adds support for Cytron's Maker Drive H-Bridge motor driver
 
 //===== Pin Definitions =====
 // Servo PWM pins
-#define LEFT_SERVO       6      // Left servo
-#define RIGHT_SERVO      7      // Right servo
+#define LEFT_SERVO       6            // Left servo
+#define RIGHT_SERVO      7            // Right servo
 // Motor driver pins
-#define MOTOR_R_FORWARD  10     // M1A
-#define MOTOR_R_BACK     11     // M1B
-#define MOTOR_L_FORWARD  9      // M2A
-#define MOTRO_L_BACK     8      // M2B
+#define MOTOR_L_FORWARD  8            // M2B
+#define MOTRO_L_BACK     9            // M2A
+#define MOTOR_R_FORWARD  10           // M1A
+#define MOTOR_R_BACK     11           // M1B
 // Motor encoder pins
-//                          TODO
+#define MOTOR_L_A        18           // Left motor encoder pin A
+#define MOTOR_L_B        19           // Left motor encoder pin B
+#define MOTOR_R_A        20           // Right motor encoder pin A
+#define MOTOR_R_B        21           // Right motor encoder pin B
 // IR pins
-#define IR_LEFT          A0     // Left sensor
-#define IR_CENTER        A1     // Center sensor
-#define IR_RIGHT         A3     // Right sensor
+#define IR_LEFT          A0           // Left sensor
+#define IR_CENTER        A1           // Center sensor
+#define IR_RIGHT         A3           // Right sensor
 // Ultrasonic pins
-#define ULTRA_ECHO       52     // Ultrasonic echo
-#define ULTRA_TRIG       53     // Ultrasonic trigger
+#define ULTRA_ECHO       52           // Ultrasonic echo
+#define ULTRA_TRIG       53           // Ultrasonic trigger
 
 //===== Global Variables =====
-// Servo setup
-Servo servoL;                   // Initialising servo objects
+// Servo
+Servo servoL;                         // Initialising servo objects
 Servo servoR;
-#define SERVO_MIN_PULSE  544    // Minimum pulse width in ms, default 544
-#define SERVO_MAX_PULSE  2400   // Minimum pulse width in ms, default 2400
-#define SCOOP_DOWN       0      // Scoop down preset angle
-#define SCOOP_UP         45     // Scoop raised preset angle
+#define SERVO_MIN_PULSE  600          // Minimum pulse width in ms, default 544
+#define SERVO_MAX_PULSE  2400         // Minimum pulse width in ms, default 2400
+#define SCOOP_DOWN       15           // Scoop down preset angle
+#define SCOOP_UP         45           // Scoop raised preset angle
 
-// Motor setup
+// Motor
 CytronMD motorL(PWM_PWM, MOTOR_L_FORWARD, MOTRO_L_BACK);   // PWM 1A = Pin 10, PWM 1B = Pin 11
 CytronMD motorR(PWM_PWM, MOTOR_R_FORWARD, MOTOR_R_BACK);   // PWM 2A = Pin 8,  PWM 2B = Pin 9
 
+// Motor encoder
+volatile unsigned long countMLA = 0;  // Encoder count A for left motor
+volatile unsigned long countMLB = 0;  // Encoder count B for left motor
+volatile unsigned long countMRA = 0;  // Encoder count A for Right motor
+volatile unsigned long countMRB = 0;  // Encoder count B for Right motor
+
+// Telemetry
+unsigned long previousTime = 0;       // Millis time last telemetry packet was sent
+unsigned long dataTimeout = 1000;     // Length of time in milliseconds between telemetry packets
+
 // ===== Function Declarations =====
 int InvertedServoPos(int);
+float UltrasonicDectection(unsigned long);
 void LineFollow();
 void RobotForward();
 void RobotReverse();
 void RobotTurnLeft();
 void RobotTurnRight();
 void RobotStop();
+void TickMLA();
+void TickMLB();
+void TickMRA();
+void TickMRB();
 
 void setup() {
   // Pinmodes
@@ -58,14 +76,26 @@ void setup() {
   pinMode(MOTOR_R_BACK,    OUTPUT);
   pinMode(MOTOR_L_FORWARD, OUTPUT);
   pinMode(MOTRO_L_BACK,    OUTPUT);
+  pinMode(ULTRA_TRIG,      OUTPUT);
+  pinMode(MOTOR_L_A,  INPUT);
+  pinMode(MOTOR_L_B,  INPUT);
+  pinMode(MOTOR_R_A,  INPUT);
+  pinMode(MOTOR_R_B,  INPUT);
+  pinMode(IR_LEFT,    INPUT);
   pinMode(IR_LEFT,    INPUT);
   pinMode(IR_RIGHT,   INPUT);
   pinMode(IR_CENTER,  INPUT);
   pinMode(ULTRA_ECHO, INPUT);
-  pinMode(ULTRA_TRIG, INPUT);
+
+  // Attach interrupts
+  attachInterrupt(digitalPinToInterrupt(MOTOR_L_A), TickMLA, RISING);
+  attachInterrupt(digitalPinToInterrupt(MOTOR_L_B), TickMLB, RISING);
+  attachInterrupt(digitalPinToInterrupt(MOTOR_R_A), TickMRA, RISING);
+  attachInterrupt(digitalPinToInterrupt(MOTOR_R_B), TickMRB, RISING);
 
   // Serial setup
   Serial.begin(250000);               // Setting serial baud rate of mega
+  Serial2.begin(38400);               // Setting serial baud rate of serial 2 port for bluetooth telemetry
   Dabble.begin(38400);                // Setting Dabble baud rate to match rate of HC-05 
 
   // Servo setup
@@ -80,6 +110,20 @@ void loop() {
   char command = ' ';                 // Validated alphabetic input
   int  value;                         // Validated numeric input 
   
+  // Data output
+  if ((millis() - previousTime) > dataTimeout) {
+    previousTime = millis();
+    Serial2.print("Distance to object: ");
+    Serial2.println(UltrasonicDectection(10000));  // Read ultrasonic distance
+    Serial2.println("Servo positions (us): ");
+    Serial2.print("Left servo: ");
+    Serial2.println(servoL.readMicroseconds());
+    Serial2.print("Right servo: ");
+    Serial2.println(servoR.readMicroseconds());
+    // Serial2.print("Left motor: ");
+    // Serial2.print("Right motor: ");
+  }
+
   // Read Dabble gamepad inputs
   Dabble.processInput();              // This function is used to refresh data obtained from smartphone.Hence calling this function is mandatory in order to get data properly from your mobile.
   Serial.print("Key pressed: ");
@@ -203,7 +247,7 @@ void loop() {
       break;
     
     default:                            // Default: invalid command
-      Serial.print("Invalid or empty command: ");
+      // Serial.print("Invalid or empty command: ");
       Serial.println(command);
       break;
   }
@@ -221,6 +265,40 @@ int InvertedServoPos(int servoPos) {
   return invertServoPos;
 }
 
+/**
+ * @brief Calculted distance to object using ultra sonic sensor
+ * 
+ * @param timeout unsigned long, duration of listen for echo in microseconds
+ * @return int, distance to object -1 if no echo detected
+ */
+ float UltrasonicDectection(unsigned long timeout) {
+  long duration = 0;           // Duration of sound wave
+  float distance = 0;          // Distance calculated to object
+  // Send sound pulse
+  digitalWrite(ULTRA_TRIG, LOW);
+  delayMicroseconds(5);
+  digitalWrite(ULTRA_TRIG, HIGH);
+  delayMicroseconds(15);
+  digitalWrite(ULTRA_TRIG, LOW);
+
+  duration = pulseIn(ULTRA_ECHO, HIGH, timeout);   // Listen for echo response
+  if (duration == 0) {
+    //Serial.println("No echo detected");          // Print error
+    return -1;                                   // Return error value
+  } else {
+    //Serial.print("Ultrasonic duration: ");
+    //Serial.println(duration);
+    distance = (duration / 2) * .0343;          // Calculate distance from time and speed of sound
+    //Serial.print("Ultrasonic distance: ");
+    //Serial.println(distance);
+    return distance;
+  }
+ }
+
+/**
+ * @brief Line following pathing algorithm, runs until stopped by button press
+ * 
+ */
 void LineFollow() {
   bool doLineFollow = true;
   delay(500);
@@ -305,4 +383,34 @@ void RobotStop() {
   servoL.write(SCOOP_DOWN);   // Left servo down
   servoR.write(InvertedServoPos(SCOOP_DOWN));   // Right servo down
   Serial.println("Robot stop");
+}
+
+// ISRs
+/**
+ * @brief Increment countMLA, left motor A count
+ * 
+ */
+void TickMLA() {
+  countMLA++;
+}
+/**
+ * @brief Increment countMLB, left motor B count
+ * 
+ */
+void TickMLB() {
+  countMLB++;
+}
+/**
+ * @brief Increment countMRA, right motor A count
+ * 
+ */
+void TickMRA() {
+  countMRA++;
+}
+/**
+ * @brief Increment countMRB, right motor B count
+ * 
+ */
+void TickMRB() {
+  countMRB++;
 }
