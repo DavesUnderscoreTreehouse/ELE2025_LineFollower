@@ -11,7 +11,7 @@
 
 //===== Pin Definitions =====
 // Servo PWM pins
-#define LEFT_SERVO       6            // Left servo
+#define LEFT_SERVO       5//6            // Left servo
 #define RIGHT_SERVO      7            // Right servo
 // Motor driver pins
 #define MOTOR_L_FORWARD  8            // M2B
@@ -121,15 +121,16 @@ void loop() {
   // Data output
   if ((millis() - previousMillis) > dataTimeout) {
     previousMillis = millis();
-    Serial2.print("Distance to object: ");
+    Serial2.println("Distance to object: ");
+    Serial2.print("x:");
     Serial2.println(UltrasonicDectection(10000));  // Read ultrasonic distance
-    // Serial2.println("Servo positions (us): ");
-    // Serial2.print("Left servo: ");
-    // Serial2.println(servoL.readMicroseconds());
-    // Serial2.print("Right servo: ");
-    // Serial2.println(servoR.readMicroseconds());
-    // Serial2.print("Left motor: ");
-    // Serial2.print("Right motor: ");
+    // Serial.println("Servo positions (us): ");
+    // Serial.print("Left servo: ");
+    // Serial.println(servoL.readMicroseconds());
+    // Serial.print("Right servo: ");
+    // Serial.println(servoR.readMicroseconds());
+    // Serial.print("Left motor: ");
+    // Serial.print("Right motor: ");
   }
 
   // Read Dabble gamepad inputs
@@ -331,6 +332,7 @@ int InvertedServoPos(int servoPos) {
 void LineFollow() {
   bool doLineFollow = true;
   bool ledState = false;
+  int direction = 0;
   unsigned long currentMillis;
   unsigned long lineUSTimeout = 10000;
   unsigned long interval = 100;         // LED blink interval
@@ -341,7 +343,7 @@ void LineFollow() {
   startMillis = millis();
   servoL.write(SCOOP_UP);   // Left servo down
   servoR.write(InvertedServoPos(SCOOP_UP));   // Right servo down
-  Serial2.println("Do line following");
+  Serial.println("Do line following");
   digitalWrite(LED_RED, HIGH);
   delay(500);
   while (doLineFollow) {
@@ -361,22 +363,26 @@ void LineFollow() {
     // Move forward if center sensor detects black
     if (center == HIGH && left == LOW && right == LOW) {
       RobotForward();  
-      Serial2.println("Line follow: Forward");
+      direction = 0;
+      Serial.println("Line follow: Forward");
     }
     // Turn left if left sensor detects black
     else if (left == HIGH) { // && center == LOW) {
       RobotTurnLeft();
-      Serial2.println("Line follow: Left");
+      direction  = -1;
+      Serial.println("Line follow: Left");
     }
     // Turn right if right sensor detects black
     else if (right == HIGH) { // && center == LOW) {
       RobotTurnRight();
-      Serial2.println("Line follow: Right");
+      direction = 1;
+      Serial.println("Line follow: Right");
     }
     // Stop if wall sensor detects black
     else if (wall == HIGH && ((millis() - startMillis) > lineUSTimeout)) {
       RobotStop();
-      Serial2.println("Wall detected");
+      direction = 0;
+      Serial.println("Wall detected");
       currentMillis = millis();
       if (currentMillis - previousMillis >= interval) {
         // save the last time you blinked the LED
@@ -401,9 +407,13 @@ void LineFollow() {
       doLineFollow = false;
       delay(500);
     }
+
+    Serial2.println("Line following direction: ");
+    Serial2.print("x:");
+    Serial2.println(direction);  // Read ultrasonic distance
   }
   digitalWrite(LED_RED, LOW);
-  Serial2.println("Line following stop");
+  Serial.println("Line following stop");
 }
 // Motor control functions
 /**
@@ -413,12 +423,12 @@ void LineFollow() {
 void RobotForward() {
   motorL.setSpeed(200); // 100
   motorR.setSpeed(200); // 100
-  Serial2.println("Robot forward");
+  Serial.println("Robot forward");
 }
 void RobotRemoteForward() {
   motorL.setSpeed(120);
   motorR.setSpeed(120);
-  Serial2.println("Robot forward");
+  Serial.println("Robot forward");
 }
 
 /**
@@ -428,7 +438,7 @@ void RobotRemoteForward() {
 void RobotReverse() {
   motorL.setSpeed(-200);
   motorR.setSpeed(-200);
-  Serial2.println("Robot reverse");
+  Serial.println("Robot reverse");
 }
 
 /**
@@ -438,13 +448,13 @@ void RobotReverse() {
 void RobotTurnLeft() {
   motorL.setSpeed(-140);  // Left motor slower //-120
   motorR.setSpeed(210);  // Right motor faster // 160
-  Serial2.println("Robot left");
+  Serial.println("Robot left");
 }
 
 void RobotRemoteTurnLeft() {
   motorL.setSpeed(-50);  // Left motor slower //-120
   motorR.setSpeed(100);  // Right motor faster // 160
-  Serial2.println("Robot left");
+  Serial.println("Robot left");
 }
 
 /**
@@ -454,13 +464,13 @@ void RobotRemoteTurnLeft() {
 void RobotTurnRight() {
   motorL.setSpeed(210);  // Left motor faster // 160
   motorR.setSpeed(-140);  // Right motor slower // -120
-  Serial2.println("Robot right");
+  Serial.println("Robot right");
 }
 
 void RobotRemoteTurnRight() {
   motorL.setSpeed(100);  // Left motor faster // 160
   motorR.setSpeed(-50);  // Right motor slower // -120
-  Serial2.println("Robot right");
+  Serial.println("Robot right");
 }
 
 /**
@@ -472,7 +482,7 @@ void RobotStop() {
   motorR.setSpeed(0);         // Right motor stop
   // servoL.write(SCOOP_UP);   // Left servo down
   // servoR.write(InvertedServoPos(SCOOP_UP));   // Right servo down
-  Serial2.println("Robot stop");
+  Serial.println("Robot stop");
 }
 
 // ISRs
